@@ -51,11 +51,27 @@ export default function BudgetsScreen() {
   const [categoryPick, setCategoryPick] = useState("");
 
   const load = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const [bRes, sRes] = await Promise.all([
-        fetch(`${API_URL}/budgets/${user.id}?month=${month}&year=${year}`),
-        fetch(`${API_URL}/budgets/status/${user.id}?month=${month}&year=${year}`),
+        fetch(`${API_URL}/budgets/${user.id}?month=${month}&year=${year}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
+        fetch(`${API_URL}/budgets/status/${user.id}?month=${month}&year=${year}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
       ]);
+      
+      if (!bRes.ok || !sRes.ok) {
+        throw new Error("Failed to fetch budgets");
+      }
+      
       const b = await bRes.json();
       const s = await sRes.json();
       setBudgets(Array.isArray(b) ? b : []);
@@ -80,11 +96,13 @@ export default function BudgetsScreen() {
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error("[Budgets] Error loading data:", e);
+      setBudgets([]);
+      setStatus([]);
     } finally {
       setLoading(false);
     }
-  }, [user.id, month, year]);
+  }, [user?.id, month, year]);
 
   useFocusEffect(
     useCallback(() => {

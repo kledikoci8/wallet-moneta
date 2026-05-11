@@ -37,24 +37,44 @@ export default function AnalyticsScreen() {
   const [chartYear, setChartYear] = useState(now.getFullYear());
 
   const fetchAnalyticsData = useCallback(async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       setIsLoading(true);
       const [resA, resC] = await Promise.all([
-        fetch(`${API_URL}/transactions/analytics/${user.id}`),
+        fetch(`${API_URL}/transactions/analytics/${user.id}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }),
         fetch(
-          `${API_URL}/transactions/categories/${user.id}?month=${chartMonth}&year=${chartYear}`
+          `${API_URL}/transactions/categories/${user.id}?month=${chartMonth}&year=${chartYear}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
         ),
       ]);
+      
+      if (!resA.ok || !resC.ok) {
+        throw new Error("Failed to fetch analytics data");
+      }
+      
       const data = await resA.json();
       const catJson = await resC.json();
       setAnalyticsData(data);
       setCategoryData(catJson.categories || []);
     } catch (error) {
-      console.error("Error fetching analytics:", error);
+      console.error("[Analytics] Error fetching analytics:", error);
+      // Set empty data to allow UI to render
+      setAnalyticsData({ monthlyData: [], dailyData: [] });
+      setCategoryData([]);
     } finally {
       setIsLoading(false);
     }
-  }, [user.id, chartMonth, chartYear]);
+  }, [user?.id, chartMonth, chartYear]);
 
   useFocusEffect(
     useCallback(() => {

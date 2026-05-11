@@ -1,6 +1,6 @@
 import cron from "cron";
 import https from "https";
-import { processRecurringTransactions } from "./config/controllers/transactionsController.js";
+import { processRecurringTransactions } from "./controllers/transactionsController.js";
 
 const keepAliveJob = new cron.CronJob("*/14 * * * *", function () {
   if (!process.env.API_URL) return;

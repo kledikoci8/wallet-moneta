@@ -11,6 +11,9 @@ import {
   ScrollView,
   StyleSheet,
   Platform,
+  Image,
+  Alert,
+  RefreshControl,
 } from "react-native";
 import { SignOutButton } from "@/components/SignOutButton";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
@@ -18,33 +21,43 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useFocusEffect } from "@react-navigation/native";
 import PageLoader from "../../components/PageLoader";
 import { createHomeStyles } from "../../assets/styles/home.styles";
-import { Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../hooks/useTheme";
 import { BalanceCard } from "../../components/BalanceCard";
 import { TransactionItem } from "../../components/TransactionItem";
-import { Alert } from "react-native";
 import NoTransactionsFound from "../../components/NoTransactionsFound";
-import { RefreshControl } from "react-native";
 import { API_URL } from "../../constants/api";
 import { useTransactionFilters } from "../../hooks/useTransactionFilters";
 import { TRANSACTION_CATEGORIES } from "../../constants/transactionCategories";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Toast } from "../../components/Toast";
 import { useNotifications } from "../../hooks/useNotifications";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Menu items defined outside component to avoid hooks issues
+const MENU_ITEMS = [
+  { icon: "stats-chart", label: "Analytics", route: "/analytics" },
+  { icon: "flag", label: "Savings Goals", route: "/goals" },
+  { icon: "wallet-outline", label: "Budgets", route: "/budgets" },
+  { icon: "settings-outline", label: "Settings", route: "/settings" },
+];
 
 export default function Page() {
   const { user } = useUser();
+  const userId = user?.id;
   const router = useRouter();
   const { COLORS } = useTheme();
   const styles = useMemo(() => createHomeStyles(COLORS), [COLORS]);
+  const insets = useSafeAreaInsets();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showLossAlert, setShowLossAlert] = useState(false);
   const [lossAmount, setLossAmount] = useState(0);
+  const [loadTimeout, setLoadTimeout] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const previousBalance = useRef(null);
-  const { transactions, summary, loadData, deleteTransaction, IsLoading } =
-    useTransactions(user.id);
+  const { transactions, summary, loadData, deleteTransaction, IsLoading, error } =
+    useTransactions(userId);
 
   useNotifications();
   const filters = useTransactionFilters(transactions);
@@ -53,29 +66,22 @@ export default function Page() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null);
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
+  // Safety timeout to prevent infinite loading
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [pulseAnim]);
+    const timeout = setTimeout(() => {
+      if (IsLoading) {
+        setLoadTimeout(true);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [IsLoading]);
 
   const checkMonthlyLoss = useCallback(
     async (checkForNewExpense = false) => {
+      if (!userId) return;
       try {
-        const response = await fetch(`${API_URL}/transactions/analytics/${user.id}`);
+        const response = await fetch(`${API_URL}/transactions/analytics/${userId}`);
         const data = await response.json();
 
         if (data.monthlyData && data.monthlyData.length > 0) {
@@ -104,7 +110,7 @@ export default function Page() {
         console.error("Error checking monthly loss:", error);
       }
     },
-    [user.id]
+    [userId]
   );
 
   const onRefresh = async () => {
@@ -113,21 +119,24 @@ export default function Page() {
     setRefreshing(false);
   };
 
+  // Load data only once on mount or when userId changes
   useEffect(() => {
-    loadData();
-  }, []);
+    if (userId) {
+      loadData();
+    }
+  }, [userId]); // ✅ Only depend on userId, not loadData
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-      const timer = setTimeout(() => {
-        if (user.id) {
+      if (userId) {
+        loadData();
+        const timer = setTimeout(() => {
           const isReturning = previousBalance.current !== null;
           checkMonthlyLoss(isReturning);
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }, [user.id])
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }, [userId]) // ✅ Only depend on userId
   );
 
   const handleDelete = (id) => {
@@ -150,51 +159,102 @@ export default function Page() {
   const dismissLossAlert = () => setShowLossAlert(false);
 
   const alertStyles = useMemo(() => makeAlertStyles(COLORS), [COLORS]);
-  const floatingStyles = useMemo(() => makeFloatingStyles(COLORS), [COLORS]);
 
-  if (IsLoading && !refreshing) return <PageLoader />;
+  if (!userId) {
+    return <PageLoader />;
+  }
+  
+  if (IsLoading && !refreshing && !loadTimeout) {
+    return <PageLoader />;
+  }
+
+  if (loadTimeout || error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={[styles.welcomeText, { color: COLORS.text }]}>
+              Connection Issue
+            </Text>
+          </View>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
+            <Ionicons name="cloud-offline-outline" size={64} color={COLORS.textLight} />
+            <Text style={{ marginTop: 16, fontSize: 18, fontWeight: "600", color: COLORS.text, textAlign: "center" }}>
+              Unable to connect to server
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 14, color: COLORS.textLight, textAlign: "center" }}>
+              {error || "The request timed out. Please check your connection and try again."}
+            </Text>
+            <TouchableOpacity
+              style={{
+                marginTop: 24,
+                backgroundColor: COLORS.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 12,
+              }}
+              onPress={() => {
+                setLoadTimeout(false);
+                loadData();
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "600" }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Get user's display name
+  const getUserDisplayName = () => {
+    if (user?.firstName) {
+      return user.firstName;
+    }
+    if (user?.fullName) {
+      return user.fullName.split(' ')[0]; // Get first name from full name
+    }
+    if (user?.username) {
+      return user.username;
+    }
+    // Fallback to email username
+    return user?.emailAddresses?.[0]?.emailAddress?.split("@")?.[0] ?? "User";
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            {/* Hamburger Menu Button */}
+            <TouchableOpacity 
+              style={styles.hamburgerButton}
+              onPress={() => setMenuVisible(true)}
+            >
+              <Ionicons name="menu" size={28} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            {/* Logo */}
             <Image
               source={require("../../assets/images/logo.png")}
               style={styles.headerLogo}
               resizeMode="contain"
             />
+
+            {/* Welcome Message */}
             <View style={styles.welcomeContainer}>
               <Text style={styles.welcomeText}>Welcome,</Text>
               <Text style={styles.usernameText}>
-                {user?.emailAddresses[0]?.emailAddress.split("@")[0]}
+                {getUserDisplayName()}!
               </Text>
             </View>
           </View>
 
           <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.analyticsButton}
-              onPress={() => router.push("/settings")}
+              style={styles.addButton}
+              onPress={() => router.push("/create")}
             >
-              <Ionicons name="settings-outline" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.analyticsButton}
-              onPress={() => router.push("/budgets")}
-            >
-              <Ionicons name="wallet-outline" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.analyticsButton} onPress={() => router.push("/goals")}>
-              <Ionicons name="flag" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.analyticsButton}
-              onPress={() => router.push("/analytics")}
-            >
-              <Ionicons name="stats-chart" size={20} color={COLORS.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addButton} onPress={() => router.push("/create")}>
               <Ionicons name="add-circle" size={20} color="#fff" />
               <Text style={styles.addButtonText}>Add</Text>
             </TouchableOpacity>
@@ -202,7 +262,11 @@ export default function Page() {
           </View>
         </View>
 
-        <BalanceCard summary={summary} />
+        <BalanceCard
+          summary={summary}
+          transactions={transactions}
+          accountName={getUserDisplayName()}
+        />
 
         <View
           style={[
@@ -413,7 +477,10 @@ export default function Page() {
 
       <FlatList
         style={styles.transactionsList}
-        contentContainerStyle={styles.transactionsListContent}
+        contentContainerStyle={[
+          styles.transactionsListContent,
+          { paddingBottom: Math.max(insets.bottom, 12) + 16 + 56 + 20 },
+        ]}
         data={filters.filtered}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
@@ -428,15 +495,80 @@ export default function Page() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       />
 
-      <Animated.View style={[floatingStyles.container, { transform: [{ scale: pulseAnim }] }]}>
-        <TouchableOpacity
-          style={floatingStyles.button}
-          onPress={() => router.push("/chat")}
-          activeOpacity={0.8}
+      <TouchableOpacity
+        style={[styles.finbotFab, { bottom: Math.max(insets.bottom, 12) + 16 }]}
+        onPress={() => router.push("/chat")}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Open FinBot chat"
+      >
+        <Ionicons name="chatbubble-ellipses" size={26} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Hamburger Menu Modal */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity 
+          style={menuStyles.overlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
         >
-          <Ionicons name="chatbubble-ellipses" size={28} color="#fff" />
+          <View style={[menuStyles.menuContainer, { backgroundColor: COLORS.card }]}>
+            {/* Menu Header */}
+            <View style={menuStyles.menuHeader}>
+              <View style={menuStyles.menuHeaderLeft}>
+                <Image
+                  source={require("../../assets/images/logo.png")}
+                  style={menuStyles.menuLogo}
+                  resizeMode="contain"
+                />
+                <View>
+                  <Text style={[menuStyles.menuTitle, { color: COLORS.text }]}>Menu</Text>
+                  <Text style={[menuStyles.menuSubtitle, { color: COLORS.textLight }]}>
+                    {getUserDisplayName()}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setMenuVisible(false)}>
+                <Ionicons name="close" size={28} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Menu Items */}
+            <View style={menuStyles.menuItems}>
+              {MENU_ITEMS.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[menuStyles.menuItem, { borderBottomColor: COLORS.border }]}
+                  onPress={() => {
+                    setMenuVisible(false);
+                    router.push(item.route);
+                  }}
+                >
+                  <View style={[menuStyles.menuIconContainer, { backgroundColor: COLORS.primary + '15' }]}>
+                    <Ionicons name={item.icon} size={24} color={COLORS.primary} />
+                  </View>
+                  <Text style={[menuStyles.menuItemText, { color: COLORS.text }]}>
+                    {item.label}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Menu Footer */}
+            <View style={menuStyles.menuFooter}>
+              <Text style={[menuStyles.menuFooterText, { color: COLORS.textLight }]}>
+                Version 1.0.0
+              </Text>
+            </View>
+          </View>
         </TouchableOpacity>
-      </Animated.View>
+      </Modal>
 
       <Toast
         message={toastMsg}
@@ -620,21 +752,79 @@ function makeAlertStyles(COLORS) {
   });
 }
 
-function makeFloatingStyles(COLORS) {
-  return StyleSheet.create({
-    container: { position: "absolute", bottom: 30, right: 20, zIndex: 1000 },
-    button: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      backgroundColor: COLORS.primary,
-      justifyContent: "center",
-      alignItems: "center",
-      shadowColor: COLORS.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-  });
-}
+const menuStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-start",
+  },
+  menuContainer: {
+    width: "80%",
+    maxWidth: 320,
+    height: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  menuHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    paddingTop: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
+  },
+  menuHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  menuLogo: {
+    width: 50,
+    height: 50,
+  },
+  menuTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  menuSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  menuItems: {
+    flex: 1,
+    paddingTop: 8,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+  },
+  menuIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  menuItemText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  menuFooter: {
+    padding: 20,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+  },
+  menuFooterText: {
+    fontSize: 12,
+  },
+});

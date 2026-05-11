@@ -10,6 +10,7 @@ import { API_URL } from '../../constants/api';
 import PageLoader from '../../components/PageLoader';
 import * as Notifications from 'expo-notifications';
 import EmptyGoals from '../../components/EmptyGoals';
+import { GoalRing3D } from '../../components/GoalRing3D';
 
 const GOAL_ICONS = ['flag', 'home', 'car', 'airplane', 'school', 'gift', 'heart', 'star', 'trophy', 'wallet'];
 const GOAL_COLORS = ['#2E7D32', '#1976D2', '#7B1FA2', '#C62828', '#F57C00', '#00838F'];
@@ -45,25 +46,52 @@ export default function GoalsScreen() {
   const [contributions, setContributions] = useState([]);
 
   const fetchGoals = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+    
     try {
-      const response = await fetch(`${API_URL}/goals/${user.id}`);
+      const response = await fetch(`${API_URL}/goals/${user.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch goals");
+      }
+      
       const data = await response.json();
       setGoals(data);
     } catch (error) {
-      console.error('Error fetching goals:', error);
+      console.error('[Goals] Error fetching goals:', error);
+      setGoals([]);
     }
-  }, [user.id]);
+  }, [user?.id]);
 
   const fetchTips = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+    
     try {
-      const response = await fetch(`${API_URL}/goals/tips/${user.id}`);
+      const response = await fetch(`${API_URL}/goals/tips/${user.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch tips");
+      }
+      
       const data = await response.json();
       setTips(data.tips || []);
       setTipsData(data);
     } catch (error) {
-      console.error('Error fetching tips:', error);
+      console.error('[Goals] Error fetching tips:', error);
+      setTips([]);
+      setTipsData(null);
     }
-  }, [user.id]);
+  }, [user?.id]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -239,7 +267,10 @@ export default function GoalsScreen() {
   if (isLoading) return <PageLoader />;
 
   const renderGoalCard = (goal) => {
-    const progress = (parseFloat(goal.current_amount) / parseFloat(goal.target_amount)) * 100;
+    const target = parseFloat(goal.target_amount) || 0;
+    const current = parseFloat(goal.current_amount) || 0;
+    const progress01 = target > 0 ? Math.min(1, Math.max(0, current / target)) : 0;
+    const progress = target > 0 ? (current / target) * 100 : 0;
     const remaining = parseFloat(goal.target_amount) - parseFloat(goal.current_amount);
 
     return (
@@ -264,14 +295,9 @@ export default function GoalsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.min(progress, 100)}%`, backgroundColor: goal.color },
-              ]}
-            />
+        <View style={[styles.progressContainer, { alignItems: 'center', justifyContent: 'center' }]}>
+          <View pointerEvents="none">
+            <GoalRing3D progress={progress01} color={goal.color} size={72} />
           </View>
         </View>
 
