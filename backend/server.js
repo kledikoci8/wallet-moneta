@@ -1,8 +1,13 @@
 import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
 import {initDB } from "./config/db.js";
 import rateLimiter from "./middleware/rateLimiter.js";
 import transactionsRoute from "./routes/transactionsRoute.js";
+import goalsRoute from "./routes/goalsRoute.js";
+import chatRoute from "./routes/chatRoute.js";
+import budgetsRoute from "./routes/budgetsRoute.js";
+import usersRoute from "./routes/usersRoute.js";
 import job from "./config/cron.js";
 
 dotenv.config();
@@ -10,17 +15,13 @@ dotenv.config();
 const app = express();
 
 
-if(process.env.NODE_ENV==="production ")job.start(); //start the cron job
+if (process.env.NODE_ENV === "production") job.start(); //start the cron job
 
 //qe t marrim vlerat tek api transactions(try) duhet t perdorim middleware
-app.use(rateLimiter);
+// Temporarily disable rate limiter if Upstash is having issues
+// app.use(rateLimiter);
+app.use(cors());
 app.use(express.json());
-
-//our costum simple middleware
-//app.use((req,res,next) => {
-    // console.log("hey we hit a request, the method is", req.method);
-    //next();
-    //});
 
 const PORT = process.env.PORT || 5001;
 
@@ -38,6 +39,10 @@ app.get("/health",(req,res) => {
 
 app.use("/api/transactions", transactionsRoute);
 app.use("/api/products", transactionsRoute);
+app.use("/api/goals", goalsRoute);
+app.use("/api/chat", chatRoute);
+app.use("/api/budgets", budgetsRoute);
+app.use("/api/users", usersRoute);
 
 initDB().then(()=> {
 app.listen(PORT, () => {

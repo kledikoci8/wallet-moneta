@@ -1,7 +1,9 @@
 import cron from "cron";
 import https from "https";
+import { processRecurringTransactions } from "./config/controllers/transactionsController.js";
 
-const job = new cron.CronJob("*/14 * * * *", function () {
+const keepAliveJob = new cron.CronJob("*/14 * * * *", function () {
+  if (!process.env.API_URL) return;
   https
     .get(process.env.API_URL, (res) => {
       if (res.statusCode === 200) console.log("GET request sent successfully");
@@ -10,21 +12,15 @@ const job = new cron.CronJob("*/14 * * * *", function () {
     .on("error", (e) => console.error("Error while sending request", e));
 });
 
-export default job;
+const recurringJob = new cron.CronJob("5 0 * * *", function () {
+  processRecurringTransactions().catch((e) =>
+    console.error("Recurring cron error", e)
+  );
+});
 
-
-// CRON JOB EXPLANATION:
-// Cron jobs are scheduled tasks that run periodically at fixed intervals
-// we want to send 1 GET request for every 14 minutes
-
-// How to define a "Schedule"?
-// You define a schedule using a cron expression, which consists of 5 fields representing:
-
-//! MINUTE, HOUR, DAY OF THE MONTH, MONTH, DAY OF THE WEEK
-
-//? EXAMPLES && EXPLANATION:
-//* 14 * * * * - Every 14 minutes
-//* 0 0 * * 0 - At midnight on every Sunday
-//* 30 3 15 * * - At 3:30 AM, on the 15th of every month
-//* 0 0 1 1 * - At midnight, on January 1st
-//* 0 * * * * - Every hour
+export default {
+  start() {
+    keepAliveJob.start();
+    recurringJob.start();
+  },
+};

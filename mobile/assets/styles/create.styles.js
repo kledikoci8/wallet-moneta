@@ -1,8 +1,7 @@
 // styles/create.styles.js
 import { StyleSheet } from "react-native";
-import { COLORS } from "../../constants/colors";
 
-export const styles = StyleSheet.create({
+export const createCreateStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -11,9 +10,12 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
   headerTitle: {
     fontSize: 18,
@@ -116,14 +118,18 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginBottom: 15,
-    marginTop: 10,
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.text,
+    letterSpacing: 0.2,
   },
   categoryGrid: {
     flexDirection: "row",
@@ -158,5 +164,56 @@ export const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
+  },
+  
+  // Date Picker Styles
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    marginBottom: 20,
+    gap: 10,
+  },
+  datePickerText: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  dateModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  dateModalContent: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  dateModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  dateModalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  dateModalCancel: {
+    fontSize: 16,
+    color: COLORS.textLight,
+  },
+  dateModalDone: {
+    fontSize: 16,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

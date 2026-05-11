@@ -1,16 +1,18 @@
 import { useSignIn } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
 import { Text, TextInput, TouchableOpacity, View, Image} from 'react-native'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
-import { styles} from '@/assets/styles/auth.styles.js'
+import { createAuthStyles } from '@/assets/styles/auth.styles.js'
 import { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { COLORS } from '@/constants/colors.js'
+import { useTheme } from '@/hooks/useTheme'
 
 export default function Page() {
   const { signIn, setActive, isLoaded } = useSignIn()
   const router = useRouter()
+  const { COLORS } = useTheme()
+  const styles = useMemo(() => createAuthStyles(COLORS), [COLORS])
 
   const [emailAddress, setEmailAddress] = React.useState('')
   const [password, setPassword] = React.useState('')

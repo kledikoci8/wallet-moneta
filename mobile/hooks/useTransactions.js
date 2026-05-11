@@ -1,74 +1,88 @@
-//react custom hook file
-import { useCallback } from 'react';
-import { useState } from 'react';
-import { Alert } from 'react-native';
-import { API_URL } from '../constants/api';
-
-//const API_URL="https://wallet-api-u1jc.onrender.com/api";
-//const API_URL="http://localhost:5001/api";
+import { useCallback, useState } from "react";
+import { Alert } from "react-native";
+import { API_URL } from "../constants/api";
 
 export const useTransactions = (userId) => {
-    const [transactions, setTransactions] = useState([]);
-    const [ summary , setSummary ] = useState({ 
-        balance: 0,
-        income: 0,
-        expense: 0 });
-        const [IsLoading, setIsLoading] = useState(true);
+  const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState({
+    balance: 0,
+    income: 0,
+    expenses: 0,
+  });
+  const [IsLoading, setIsLoading] = useState(true);
 
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/transactions/${userId}`);
+      const data = await response.json();
+      setTransactions(data);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }
+  }, [userId]);
 
-//useCallBack is used for performance reasons it will memorize the function and will not recreate it on every render
-        const fetchTransactions = useCallback(async () => {
-            try {
-                const response = await fetch(`${API_URL}/transactions/${userId}`);
-                const data=await response.json();
-                setTransactions(data);
-            }
-             catch (error) {
-               console.error("Error fetching transactions:", error);
-            } 
-        }, [userId])//dependency array
-    ;        
-    const fetchSummary = useCallback(async () => {
-        try {
-            const response = await fetch(`${API_URL}/transactions/summary/${userId}`);
-            const data=await response.json();
-            setSummary(data);
-        }
-         catch (error) {
-           console.error("Error fetching summary:", error);
-        } 
-    }, [userId])//dependency array
-;   
-    const loadData= useCallback(async () => {
-        try {
-        if(!userId) return;
-        setIsLoading(true);
-        // can run in parallel
-        await Promise.all([fetchTransactions(), fetchSummary()]);
-        // await fetchTransactions();
-        // await fetchSummary();
-        }
-        catch (error) {
-            console.error("Error loading data:", error);
-        }
-        finally {
-        setIsLoading(false);}
-        }, [userId, fetchTransactions, fetchSummary]);
+  const fetchSummary = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/transactions/summary/${userId}`);
+      const data = await response.json();
+      setSummary(data);
+    } catch (error) {
+      console.error("Error fetching summary:", error);
+    }
+  }, [userId]);
 
-      const deleteTransaction = async (id) => {
-        try {
-            const response =await fetch(`${API_URL}/transactions/${id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) throw new Error('Failed to delete transaction');
+  const loadData = useCallback(async () => {
+    try {
+      if (!userId) return;
+      setIsLoading(true);
+      await Promise.all([fetchTransactions(), fetchSummary()]);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, fetchTransactions, fetchSummary]);
 
-            //Refresh data after deletion
-            loadData();
-        Alert.alert("Transaction deleted successfully");
-        } catch (error) {
-            console.error("Error deleting transaction:", error);
-            Alert.alert("Error", error.message);
-        }
-    };
-    return { transactions, summary, loadData, deleteTransaction, IsLoading };
-} 
+  const deleteTransaction = async (id, opts = {}) => {
+    const backup = [...transactions];
+    setTransactions((prev) =>
+      prev.filter((x) => Number(x.id) !== Number(id))
+    );
+    try {
+      const response = await fetch(`${API_URL}/transactions/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete transaction");
+      await Promise.all([fetchTransactions(), fetchSummary()]);
+      Alert.alert("Transaction deleted successfully");
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      setTransactions(backup);
+      opts.onRollback?.();
+      Alert.alert("Error", error.message || "Delete failed");
+    }
+  };
+
+  const updateTransaction = async (id, body) => {
+    const response = await fetch(`${API_URL}/transactions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || "Update failed");
+    }
+    await loadData();
+  };
+
+  return {
+    transactions,
+    setTransactions,
+    summary,
+    loadData,
+    deleteTransaction,
+    updateTransaction,
+    IsLoading,
+  };
+};

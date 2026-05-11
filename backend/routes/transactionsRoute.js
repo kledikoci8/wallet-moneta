@@ -1,14 +1,28 @@
-import express from "express"
-import { sql } from "../config/db.js";
-import { createTransaction, deleteTransaction, getSummaryByUserId, getTransactionsByUserId } from "../config/controllers/transactionsController.js";
-// krijojme router
-const router = express.Router()
+import express from "express";
+import {
+  createTransaction,
+  deleteTransaction,
+  getSummaryByUserId,
+  getTransactionsByUserId,
+  getAnalyticsByUserId,
+  updateTransaction,
+  getCategorySpendByMonth,
+  getRecurringTransactions,
+  exportTransactions,
+  getTransactionById,
+} from "../config/controllers/transactionsController.js";
 
-//kur i kishim tek server.js i kishim me app.post ose app.get ose app.delete
-// ne vend te /api/transactions=>psh mund te vendosim edhe vetem / per shkak te app.use("/api/transactions", transactionsRoute); ne server.js
-router.get("/:userId",getTransactionsByUserId);
+const router = express.Router();
+
+router.get("/detail/:id", getTransactionById);
+router.get("/export/:userId", exportTransactions);
+router.get("/categories/:userId", getCategorySpendByMonth);
+router.get("/recurring/:userId", getRecurringTransactions);
+router.get("/analytics/:userId", getAnalyticsByUserId);
+router.get("/summary/:userId", getSummaryByUserId);
+router.put("/:id", updateTransaction);
+router.get("/:userId", getTransactionsByUserId);
 router.post("/", createTransaction);
 router.delete("/:id", deleteTransaction);
-router.get("/summary/:userId",getSummaryByUserId);
-     
-export default router
+
+export default router;

@@ -1,18 +1,19 @@
-import { Stack } from "expo-router";
-import SafeScreen from "@/components/SafeScreen";
-import { ClerkProvider } from '@clerk/clerk-expo'
-import { tokenCache } from '@clerk/clerk-expo/token-cache'
 import { Slot } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-
+import SafeScreen from "@/components/SafeScreen";
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { ThemeProvider } from "@/hooks/useTheme";
 
 export default function RootLayout() {
-   //handle the auth with clerk
-  return <ClerkProvider tokenCache={tokenCache}>
-    <SafeScreen>
-       <Slot />
-    </SafeScreen>
-    <StatusBar  style="dark" />
+  return (
+    <ClerkProvider tokenCache={tokenCache}>
+      <ThemeProvider>
+        <SafeScreen>
+          <Slot />
+        </SafeScreen>
+        <StatusBar style="dark" />
+      </ThemeProvider>
     </ClerkProvider>
-   //slot merret nga expo router
+  );
 }

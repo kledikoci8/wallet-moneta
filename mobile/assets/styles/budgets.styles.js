@@ -1,0 +1,78 @@
+import { StyleSheet } from "react-native";
+
+export const createBudgetsStyles = (COLORS) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 12,
+      backgroundColor: COLORS.white,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.border,
+    },
+    headerTitle: { fontSize: 18, fontWeight: "700", color: COLORS.text },
+    backButton: { padding: 8 },
+    content: { flex: 1, padding: 16 },
+    summaryCard: {
+      backgroundColor: COLORS.primary,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+    },
+    summaryText: { color: COLORS.white, fontSize: 15, fontWeight: "600" },
+    navRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    navBtn: { padding: 8 },
+    navLabel: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+    row: {
+      backgroundColor: COLORS.card,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+    },
+    rowTitle: { fontSize: 16, fontWeight: "600", color: COLORS.text, marginBottom: 8 },
+    barBg: {
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: COLORS.border,
+      overflow: "hidden",
+    },
+    barFill: { height: 10, borderRadius: 5 },
+    meta: { marginTop: 8, fontSize: 13, color: COLORS.textLight },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: COLORS.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 20,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 12,
+      color: COLORS.text,
+    },
+    btn: {
+      backgroundColor: COLORS.primary,
+      padding: 14,
+      borderRadius: 12,
+      alignItems: "center",
+    },
+    btnText: { color: COLORS.white, fontWeight: "700" },
+  });
