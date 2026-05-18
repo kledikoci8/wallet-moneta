@@ -6,7 +6,7 @@
 // - macOS/Linux: Run `ipconfig getifaddr en0` in terminal
 // - Windows: Run `ipconfig` and look for IPv4 Address
 // - Make sure your phone/emulator is on the SAME network as your computer
-export const API_URL="http://172.20.10.2:5001/api";
+export const API_URL="http://192.168.1.2:5001/api";
 
 // 🧪 To test if backend is reachable:
 // curl http://192.168.1.4:5001/api/health
