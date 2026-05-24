@@ -7,6 +7,7 @@ import {
   View,
   Modal,
   Animated,
+  Easing,
   TextInput,
   ScrollView,
   StyleSheet,
@@ -55,9 +56,33 @@ export default function Page() {
   const [lossAmount, setLossAmount] = useState(0);
   const [loadTimeout, setLoadTimeout] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const menuAnim = useRef(new Animated.Value(-320)).current;
   const previousBalance = useRef(null);
   const { transactions, summary, loadData, deleteTransaction, IsLoading, error } =
     useTransactions(userId);
+
+  const openMenu = () => {
+    setMenuVisible(true);
+    menuAnim.setValue(-320);
+    Animated.timing(menuAnim, {
+      toValue: 0,
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeMenu = (callback) => {
+    Animated.timing(menuAnim, {
+      toValue: -320,
+      duration: 220,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setMenuVisible(false);
+      if (typeof callback === "function") callback();
+    });
+  };
 
   useNotifications();
   const filters = useTransactionFilters(transactions);
@@ -229,7 +254,7 @@ export default function Page() {
             {/* Hamburger Menu Button */}
             <TouchableOpacity 
               style={styles.hamburgerButton}
-              onPress={() => setMenuVisible(true)}
+              onPress={openMenu}
             >
               <Ionicons name="menu" size={28} color={COLORS.primary} />
             </TouchableOpacity>
@@ -509,15 +534,15 @@ export default function Page() {
       <Modal
         visible={menuVisible}
         transparent
-        animationType="slide"
-        onRequestClose={() => setMenuVisible(false)}
+        animationType="none"
+        onRequestClose={closeMenu}
       >
         <TouchableOpacity 
           style={menuStyles.overlay}
           activeOpacity={1}
-          onPress={() => setMenuVisible(false)}
+          onPress={closeMenu}
         >
-          <View style={[menuStyles.menuContainer, { backgroundColor: COLORS.card }]}>
+          <Animated.View style={[menuStyles.menuContainer, { backgroundColor: COLORS.card, transform: [{ translateX: menuAnim }] }]}>
             {/* Menu Header */}
             <View style={menuStyles.menuHeader}>
               <View style={menuStyles.menuHeaderLeft}>
@@ -533,7 +558,7 @@ export default function Page() {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setMenuVisible(false)}>
+              <TouchableOpacity onPress={closeMenu}>
                 <Ionicons name="close" size={28} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -545,7 +570,7 @@ export default function Page() {
                   key={index}
                   style={[menuStyles.menuItem, { borderBottomColor: COLORS.border }]}
                   onPress={() => {
-                    setMenuVisible(false);
+                    closeMenu();
                     router.push(item.route);
                   }}
                 >
@@ -566,7 +591,7 @@ export default function Page() {
                 Version 1.0.0
               </Text>
             </View>
-          </View>
+          </Animated.View>
         </TouchableOpacity>
       </Modal>
 
@@ -757,6 +782,7 @@ const menuStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-start",
+    alignItems: "flex-start",
   },
   menuContainer: {
     width: "80%",
